@@ -1,0 +1,11 @@
+*.jpg
+windows-sim
+windows-sim/*
+.idea
+*.mp4
+CarND_Term1_P3.zip
+data.zip
+data
+RecordDrive
+*.zip
+__pycache__/DetectLaneLines.cpython-35.pyc
