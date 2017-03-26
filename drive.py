@@ -16,10 +16,28 @@ from keras.models import load_model
 import h5py
 from keras import __version__ as keras_version
 
+import cv2
+import DetectLaneLines as dl
+
 sio = socketio.Server()
 app = Flask(__name__)
 model = None
 prev_image_array = None
+
+def preprocess_image(img):
+    '''
+    Method for preprocessing images: this method is the same used in drive.py, except this version uses
+    BGR to YUV and drive.py uses RGB to YUV (due to using cv2 to read the image here, where drive.py images are
+    received in RGB)
+    '''
+    new_img = img[50:140,:,:]
+    # apply subtle blur
+    new_img = cv2.GaussianBlur(new_img, (3,3), 0)
+    # scale to 66x200x3 (same as nVidia)
+    new_img = cv2.resize(new_img,(200, 66), interpolation = cv2.INTER_AREA)
+
+    new_img = cv2.cvtColor(new_img, cv2.COLOR_RGB2YUV)
+    return new_img
 
 
 class SimplePIController:
@@ -44,7 +62,7 @@ class SimplePIController:
 
 
 controller = SimplePIController(0.1, 0.002)
-set_speed = 9
+set_speed = 30  # Adjust this for track 2
 controller.set_desired(set_speed)
 
 
@@ -61,11 +79,24 @@ def telemetry(sid, data):
         imgString = data["image"]
         image = Image.open(BytesIO(base64.b64decode(imgString)))
         image_array = np.asarray(image)
-        steering_angle = float(model.predict(image_array[None, :, :, :], batch_size=1))
+        img = preprocess_image(image_array)
+        transformed_image_array = img[None, :, :, :]
+        old_angle = float(steering_angle)/25 # Convertion from 25 to 1
+        pred_angle = float(model.predict(transformed_image_array, batch_size=1))
+
+        # Override oredictions based on current angle and new angle
+        if abs(pred_angle) < 0.075:
+            new_angle = 0
+        elif abs(pred_angle) < 0.12:
+            new_angle = pred_angle/3
+        else:
+            new_angle = (pred_angle - old_angle) * 1.1 + old_angle
+
+        steering_angle = float(new_angle)
 
         throttle = controller.update(float(speed))
 
-        print(steering_angle, throttle)
+        print(steering_angle, throttle, old_angle)
         send_control(steering_angle, throttle)
 
         # save frame
