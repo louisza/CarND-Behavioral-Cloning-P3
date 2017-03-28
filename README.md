@@ -1,118 +1,236 @@
-# Behaviorial Cloning Project
+#**Behavioral Cloning** 
 
-[![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
-
-Overview
 ---
-This repository contains starting files for the Behavioral Cloning Project.
+###Louis Pienaar - 2017/03/23
 
-In this project, you will use what you've learned about deep neural networks and convolutional neural networks to clone driving behavior. You will train, validate and test a model using Keras. The model will output a steering angle to an autonomous vehicle.
+[//]: # (Image References)
 
-We have provided a simulator where you can steer a car around a track for data collection. You'll use image data and steering angles to train a neural network and then use this model to drive the car autonomously around the track.
+[CarSimManual]: ./MD_files/CarSimManual.gif "Manual drive gif"
+[NVIDIA_Architecture]: ./MD_files/NVIDIA_Architecture.png "NVIDIA"
+[Center]: ./MD_files/center.jpg "Center Image"
+[Recovery_Left]: ./MD_files/Recovery_Left.jpg "Recovery Left"
+[FinalNetworkSummary]: ./MD_files/FinalNetworkSummary.png "Recovery Image"
+[AugImageOne]: ./MD_files/AugImageOne.png "AugImageOne"
+[AugImageTwo]: ./MD_files/AugImageTwo.png "AugImageOne"
+[AugImageThree]: ./MD_files/AugImageThree.png "AugImageOne"
+[HistBefore]: ./MD_files/HistBefore.png "HistBefore"
+[HistAfter]: ./MD_files/HistAfter.png "HistAfter"
 
-We also want you to create a detailed writeup of the project. Check out the [writeup template](https://github.com/udacity/CarND-Behavioral-Cloning-P3/blob/master/writeup_template.md) for this project and use it as a starting point for creating your own writeup. The writeup can be either a markdown file or a pdf document.
+### Project overview
 
-To meet specifications, the project will require submitting five files: 
-* model.py (script used to create and train the model)
-* drive.py (script to drive the car - feel free to modify this file)
-* model.h5 (a trained Keras model)
-* a report writeup file (either markdown or pdf)
-* video.mp4 (a video recording of your vehicle driving autonomously around the track for at least one full lap)
+The purpose of this project is to train a neural network that
+ predicts the steering angle of a car simulator as it traverses a course. 
+ This is done not by using deterministic rules but rather by cloning behaviour. 
+ Data is collected by driving the car simulator around the course.
+ A network is then trained on this data. A successful outcome is achieved 
+ when the car traverses the course in autonomous mode 
+ without it ever leaving the course.
+ 
+ The car simulator is provided by Udacity along with a python program that can send
+ the steering angles (and speed) to the simulator. The simulator provides a image captured by a dash camera that
+ the trained network will then use to predict the correct steering angle.
+ 
+ Here is a gif showing you hwo the manual simulator works:
+ 
+ ![Car simulator on manual training][CarSimManual]
 
-This README file describes how to output the video in the "Details About Files In This Directory" section.
 
-Creating a Great Writeup
----
-A great writeup should include the [rubric points](https://review.udacity.com/#!/rubrics/432/view) as well as your description of how you addressed each point.  You should include a detailed description of the code used (with line-number references and code snippets where necessary), and links to other supporting documents or external references.  You should include images in your writeup to demonstrate how your code works with examples.  
+####1. Project files
 
-All that said, please be concise!  We're not looking for you to write a book here, just a brief description of how you passed each rubric point, and references to the relevant code :). 
+My project includes the following files:
+* clone_combo.py containing the script to create and train the model
+* drive_smooth.py for driving the car in autonomous mode 
+    (Changes made to the initial script)
+* model_clone_combo.h5 containing a trained convolution neural network 
+* CarND_Term1_P3.md containing the project write up
+* Track1_Video.mp4 video showing the successful run in autonomous mode
 
-You're not required to use markdown for your writeup.  If you use another method please just submit a pdf of your writeup.
+The car can be run in autonomous mode by putting the simulator in autonomous mode
+and starting the script using this command from the project directory:
+python drive_smooth.py model_clone_combo.h5
 
-The Project
----
-The goals / steps of this project are the following:
-* Use the simulator to collect data of good driving behavior 
-* Design, train and validate a model that predicts a steering angle from image data
-* Use the model to drive the vehicle autonomously around the first track in the simulator. The vehicle should remain on the road for an entire loop around the track.
-* Summarize the results with a written report
 
-### Dependencies
-This lab requires:
+###Model Architecture and Training Strategy
 
-* [CarND Term1 Starter Kit](https://github.com/udacity/CarND-Term1-Starter-Kit)
+####1. Model architecture
 
-The lab enviroment can be created with CarND Term1 Starter Kit. Click [here](https://github.com/udacity/CarND-Term1-Starter-Kit/blob/master/README.md) for the details.
+Before I started working on this project I have been following and reading about
+behavioural cloning in general. I made up my mind to start of
+by using the NVIDIA model as detailed in this blog: 
+https://devblogs.nvidia.com/parallelforall/deep-learning-self-driving-cars/
 
-The following resources can be found in this github repository:
-* drive.py
-* video.py
-* writeup_template.md
+The NIVIDA architecture consists of 9 layers, including a normalization layer, 
+5 convolutional layers, and 3 fully connected layers.
+The input image is split into YUV planes and passed to the network.  
 
-The simulator can be downloaded from the classroom. In the classroom, we have also provided sample data that you can optionally use to help train your model.
+![NVIDIA][NVIDIA_Architecture]
 
-## Details About Files In This Directory
 
-### `drive.py`
+Initial tests with this architecture and the Udacity training set performed extremely well.
+In fact, once I had the network trained with 5 epochs, 
+it managed to complete a round on the track in autonomous mode. 
+This NVIDIA architecture is an extremely valuable one. In my conclusion, 
+I will discuss why I think this is the case.  
 
-Usage of `drive.py` requires you have saved the trained model as an h5 file, i.e. `model.h5`. See the [Keras documentation](https://keras.io/getting-started/faq/#how-can-i-save-a-keras-model) for how to create this file using the following command:
-```sh
-model.save(filepath)
-```
+However, this is a learning experience, so I did not stop my project at this point. 
+I decided to experiment with two approaches:
 
-Once the model has been saved, it can be used with drive.py using this command:
+1.) Augment images in pre-processing with hough lines
+2.) Combine two good networks into one
 
-```sh
-python drive.py model.h5
-```
+For the hough lines experiment, I used my previous project Lane line detection pipeline, 
+slightly adjusted, in order to draw the lane lines onto the image 
+before it is fed to the network. The result of this was both positive and negative.
+The car performed worse in autonomous mode, as it was rapidly swerving between 
+the road edges and twice crossed the road edge. One theory on why this might be the case
+ is due to processing power required versus available. One more thing I will discuss in my conclusion.
+However, the model performed better on track 2, 
+compared to a standard NVIDIA model without hough lines. Or in other words. 
+the hough lines addition helped the model generalise more. 
 
-The above command will load the trained model and use the model to make predictions on individual images in real-time and send the predicted angle back to the server via a websocket connection.
+The combination approach proofed to be very interesting.
 
-Note: There is known local system's setting issue with replacing "," with "." when using drive.py. When this happens it can make predicted steering values clipped to max/min values. If this occurs, a known fix for this is to add "export LANG=en_US.utf8" to the bashrc file.
+For my second model I chose a model presented by https://www.comm.ai
+The model consists of 7 layers, including a normalisation layer, 
+three convolutional layers and two dense layers.
 
-#### Saving a video of the autonomous agent
+I combined the two models by performing the normalisation layer 
+and then splitting the network into two.
+Each side running the NVIDIA and comma.ai network respectively
+ up to the point where the network is flattened.
+I then concatenate the two flattened layers and perform 
+3 dense layers on that resulting in a single output.
+I added dropout layers, kernel_regularizers and RELU activation on both networks and also 
+on the combined network. To combat over training and to introduce nonlinearity
 
-```sh
-python drive.py model.h5 run1
-```
+I chose these two networks as they try and map two distinct features.
+ The NVIDIA architecture seems to be really good at detecting the road 
+ edges and lines and the comma.ai is designed to detect the road surface.
+ 
+ A big difference noted on the new architecture is the fact that 
+ slightly more epochs are needed to train the model. 
+ (Used to be about 5 epochs and this increased to 7 or 8)
+ 
+Final model summary:
 
-The fourth argument `run1` is the directory to save the images seen by the agent to. If the directory already exists it'll be overwritten.
+![Final Network][FinalNetworkSummary]
 
-```sh
-ls run1
+The model was trained and tested on different datasets.
 
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_424.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_451.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_477.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_528.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_573.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_618.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_697.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_723.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_749.jpg
-[2017-01-09 16:10:23 EST]  12KiB 2017_01_09_21_10_23_817.jpg
-...
-```
+The model used an adam optimizer, so the learning rate was not tuned manually.
 
-The image file name is a timestamp when the image image was seen. This information is used by `video.py` to create a chronological video of the agent driving.
+####Training data
 
-### `video.py`
+As with almost all modelling exercises, 
+it is crucial to provide the network with a really good set of training data.
+Even with the simulator, it remains difficult to get a good training set.  
 
-```sh
-python video.py run1
-```
+The training set needs to contain a good balance of smooth driving and 
+recovery data for when the car gets it wrong. It must also not contain 
+too much data as you then run the risk of 
+the network "memorising" the track instead of cloning behaviour. 
+(ie over training to the point where it fails to generalise)
 
-Create a video based on images found in the `run1` directory. The name of the video will be name of the directory following by `'.mp4'`, so, in this case the video will be `run1.mp4`.
 
-Optionally one can specify the FPS (frames per second) of the video:
+####Training set and augmentation
 
-```sh
-python video.py run1 --fps 48
-```
+Using an anlogue controller, I captured two laps of track 1 
+trying to drive as smoothly as possible and sticking 
+to the middle of the road.
+![Center][Center]
 
-The video will run at 48 FPS. The default FPS is 60.
+I then recorded the vehicle recovering from the left side and right sides 
+of the road back to center so that the vehicle would learn to handle situations for when this would occur.
 
-#### Why create a video
+![Recovery_Left][Recovery_Left]
 
-1. It's been noted the simulator might perform differently based on the hardware. So if your model drives succesfully on your machine it might not on another machine (your reviewer). Saving a video is a solid backup in case this happens.
-2. You could slightly alter the code in `drive.py` and/or `video.py` to create a video of what your model sees after the image is processed (may be helpful for debugging).
+I combined my training data with the set from Udacity.
+ The data contains three images; center , left and right
+  representing images taken from cameras situated in the center, left and right of the dash.
+  
+I used the images from teh left and right cameras as well in my data 
+by adding and subtracting 0.15 from the angle, representing the correction the car
+ needs to take if it were in fact centered on the left and right camera.
+
+ 
+ and then augmented 
+it further by adding random distortion in the form of
+adjusting the brightness, adding a random shadow to the image, 
+and randomly shifting the horizon.
+
+Here are three augmented images with a green line showing the actual steering angle.
+
+![alt text][AugImageOne]
+![alt text][AugImageTwo]
+![alt text][AugImageThree]
+
+Note that only the training data is augmented, the validation data is left as is.
+
+Inspecting the histogram of steering angles show that there is an 
+inbalance in steering angles in teh training data.
+
+![HistBefore][HistBefore]
+
+I correct this by randomly removing images from the over balanced bins.
+
+The result of this action:
+
+![HistAfter][HistAfter]
+
+Before: (32307,) (32307,)  
+After: (7633,) (7633,)  
+Train: (7251,) (7251,)  
+Test: (382,) (382,)  
+
+The number of data points decreased from 32 307 to 6 577.
+I split the remaining 6577 data points into a training set of 6 248 and a validation set of 329.
+
+### Model training results
+
+The model trains fairly quickly on my hardware. Each epoch taking about 177 seconds and I trained on 8 epochs.
+
+Epoch 1/8
+185s - loss: 0.6193 - val_loss: 0.2026
+Epoch 2/8
+171s - loss: 0.1246 - val_loss: 0.0775
+Epoch 3/8
+171s - loss: 0.0715 - val_loss: 0.0582
+Epoch 4/8
+172s - loss: 0.0570 - val_loss: 0.0458
+Epoch 5/8
+171s - loss: 0.0500 - val_loss: 0.0446
+Epoch 6/8
+167s - loss: 0.0453 - val_loss: 0.0432
+Epoch 7/8
+166s - loss: 0.0422 - val_loss: 0.0392
+Epoch 8/8
+165s - loss: 0.0393 - val_loss: 0.0351
+
+The model gets to a state where it will navigate track one very quickly, 
+however, I train to epoch 8 as it gives me a smoother ride.
+
+This model along with a few small changes to drive.py results in a very robust experience on track 1.
+It completes the track without ever touching the sides and the lines.
+ It is also able to recover quickly when I take over and deliberately drive the car at steep 
+ angles to the side.
+ 
+ In the attached image you will see one lap successfully completed and then a few scenarios of where I try 
+ and confuse the car.
+ 
+ ### Conclusions
+ 
+ This project has been an awesome experience. I got to a working state within a few hours,
+  but ended up spending almost 20 more hours, playing and experimenting with techniques.
+  
+ The power of using existing networks are immense as proven by the NVIDIA model and makes me 
+ very hopeful for
+  future leaps in innovation in this space.
+  
+ My model performed really well on track one but fails miserably on track two. To combat this I would either try and 
+ darken my images more, or just collect data from track two as well.
+ 
+ Adding my own lane detection failed but I would like to try this method again after we have finished the next project.
+ I wonder about how intense pre-processing and the subsequent lag due to  computing will affect autonomous driving.
+ 
+ 
+
