@@ -30,7 +30,7 @@ The purpose of this project is to train a neural network that
  the steering angles (and speed) to the simulator. The simulator provides a image captured by a dash camera that
  the trained network will then use to predict the correct steering angle.
  
- Here is a gif showing you hwo the manual simulator works:
+ Here is a gif showing you how the manual simulator works:
  
  ![Car simulator on manual training][CarSimManual]
 
