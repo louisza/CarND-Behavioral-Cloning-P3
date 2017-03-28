@@ -1,7 +1,7 @@
-#**Behavioral Cloning** 
+# **Behavioral Cloning** 
 
 ---
-###Louis Pienaar - 2017/03/23
+### Louis Pienaar - 2017/03/23
 
 [//]: # (Image References)
 
@@ -35,7 +35,7 @@ The purpose of this project is to train a neural network that
  ![Car simulator on manual training][CarSimManual]
 
 
-####1. Project files
+#### 1. Project files
 
 My project includes the following files:
 * clone_combo.py containing the script to create and train the model
@@ -50,9 +50,9 @@ and starting the script using this command from the project directory:
 python drive_smooth.py model_clone_combo.h5
 
 
-###Model Architecture and Training Strategy
+### Model Architecture and Training Strategy
 
-####1. Model architecture
+#### 1. Model architecture
 
 Before I started working on this project I have been following and reading about
 behavioural cloning in general. I made up my mind to start of
@@ -119,7 +119,7 @@ The model was trained and tested on different datasets.
 
 The model used an adam optimizer, so the learning rate was not tuned manually.
 
-####Training data
+#### Training data
 
 As with almost all modelling exercises, 
 it is crucial to provide the network with a really good set of training data.
@@ -132,7 +132,7 @@ the network "memorising" the track instead of cloning behaviour.
 (ie over training to the point where it fails to generalise)
 
 
-####Training set and augmentation
+#### Training set and augmentation
 
 Using an anlogue controller, I captured two laps of track 1 
 trying to drive as smoothly as possible and sticking 
