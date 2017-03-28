@@ -189,23 +189,23 @@ I split the remaining 6577 data points into a training set of 6 248 and a valida
 
 The model trains fairly quickly on my hardware. Each epoch taking about 177 seconds and I trained on 8 epochs.
 
-Epoch 1/8
-185s - loss: 0.6193 - val_loss: 0.2026
-Epoch 2/8
-171s - loss: 0.1246 - val_loss: 0.0775
-Epoch 3/8
-171s - loss: 0.0715 - val_loss: 0.0582
-Epoch 4/8
-172s - loss: 0.0570 - val_loss: 0.0458
-Epoch 5/8
-171s - loss: 0.0500 - val_loss: 0.0446
-Epoch 6/8
-167s - loss: 0.0453 - val_loss: 0.0432
-Epoch 7/8
-166s - loss: 0.0422 - val_loss: 0.0392
-Epoch 8/8
-165s - loss: 0.0393 - val_loss: 0.0351
-
+Epoch 1/8  
+185s - loss: 0.6193 - val_loss: 0.2026  
+Epoch 2/8  
+171s - loss: 0.1246 - val_loss: 0.0775  
+Epoch 3/8  
+171s - loss: 0.0715 - val_loss: 0.0582  
+Epoch 4/8  
+172s - loss: 0.0570 - val_loss: 0.0458  
+Epoch 5/8  
+171s - loss: 0.0500 - val_loss: 0.0446  
+Epoch 6/8  
+167s - loss: 0.0453 - val_loss: 0.0432  
+Epoch 7/8  
+166s - loss: 0.0422 - val_loss: 0.0392  
+Epoch 8/8  
+165s - loss: 0.0393 - val_loss: 0.0351  
+  
 The model gets to a state where it will navigate track one very quickly, 
 however, I train to epoch 8 as it gives me a smoother ride.
 
