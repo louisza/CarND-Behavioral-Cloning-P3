@@ -401,7 +401,7 @@ if RunModel:
     nf_model = Model(inputs=nfInput,output=nf_SteerAngle)
     nf_model.compile(optimizer=Adam(lr=1e-4), loss='mse')
 
-    print(nf_model.summary())
+    print(model.summary())
 
     nf_history = nf_model.fit(x=model_pred,y=angles_train,epochs=2,batch_size=64,)
 
