@@ -1,4 +1,5 @@
 from keras.models import Sequential, Model
+from keras.models import load_model
 from keras.layers.core import Dense, Activation, Flatten, Dropout, Lambda
 from keras.layers.convolutional import Convolution2D, Conv2D
 from keras.regularizers import l2
@@ -149,6 +150,50 @@ def generate_training_data(image_paths, angles, batch_size=128, validation_flag=
                     image_paths, angles = shuffle(image_paths, angles)
 
 
+#ignore for now
+def generate_training_data_nf(image_paths, angles, batch_size=128, validation_flag=False):
+    '''
+    method for the model training data generator to load, process, and distort images, then yield them to the
+    model. if 'validation_flag' is true the image is not distorted. also flips images with turning angle magnitudes
+    of greater than 0.33, as to give more weight to them and mitigate bias toward low and zero turning angles
+    '''
+    image_paths, angles = shuffle(image_paths, angles)
+    X, y = ([], [])
+    while True:
+        for i in range(len(angles)):
+            img = cv2.imread(image_paths[i])
+            angle = angles[i]
+            img = preprocess_image(img)
+            if not validation_flag:
+                img, angle = random_distort(img, angle)
+            X.append(img)
+            y.append(angle)
+            if len(X) == batch_size:
+                yield (np.array(X), np.array(y))
+                X, y = ([], [])
+                image_paths, angles = shuffle(image_paths, angles)
+            # flip horizontally and invert steer angle, if magnitude is > 0.33
+            if abs(angle) > 0:
+                img = cv2.flip(img, 1)
+                angle *= -1
+                X.append(img)
+                y.append(angle)
+                if len(X) == batch_size:
+                    yield (np.array(X), np.array(y))
+                    X, y = ([], [])
+                    image_paths, angles = shuffle(image_paths, angles)
+            # extra flip for adverse steering angles
+            if abs(angle) > 0.33:
+                img = cv2.flip(img, 1)
+                angle *= -1
+                X.append(img)
+                y.append(angle)
+                if len(X) == batch_size:
+                    yield (np.array(X), np.array(y))
+                    X, y = ([], [])
+                    image_paths, angles = shuffle(image_paths, angles)
+
+
 def generate_training_data_for_visualization(image_paths, angles, batch_size=20, validation_flag=False):
     '''
     method for loading, processing, and distorting images
@@ -242,15 +287,15 @@ angles = np.delete(angles, remove_list)
 
 # print histogram again to show more even distribution of steering angles
 hist, bins = np.histogram(angles, num_bins)
-plt.bar(center, hist, align='center', width=width)
-plt.plot((np.min(angles), np.max(angles)), (avg_samples_per_bin, avg_samples_per_bin), 'k-')
-plt.show()
+#plt.bar(center, hist, align='center', width=width)
+#plt.plot((np.min(angles), np.max(angles)), (avg_samples_per_bin, avg_samples_per_bin), 'k-')
+#plt.show()
 
 print('After:', image_paths.shape, angles.shape)
 
 # visualize a single batch of the data
-X,y = generate_training_data_for_visualization(image_paths, angles)
-visualize_dataset(X,y)
+#X,y = generate_training_data_for_visualization(image_paths, angles)
+#visualize_dataset(X,y)
 
 # split into train/test sets
 image_paths_train, image_paths_test, angles_train, angles_test = train_test_split(image_paths, angles,
@@ -273,7 +318,8 @@ if RunModel:
                kernel_regularizer=l2(0.001))(x)
     x = Conv2D(filters=48, kernel_size=(5, 5), strides=(2, 2), padding='valid', activation='elu',
                kernel_regularizer=l2(0.001))(x)
-    # End f irst three layers with a dropout layer
+
+    # End first three layers with a dropout layer
     x = Dropout(0.5)(x)
 
     # Two more convolutional layers with kernel size (3,3) and filter 64
@@ -320,29 +366,70 @@ if RunModel:
     model.compile(optimizer=Adam(lr=1e-4), loss='mse')
 
     # initialize generators
-    train_gen = generate_training_data(image_paths_train, angles_train, validation_flag=False, batch_size=64)
-    val_gen = generate_training_data(image_paths_train, angles_train, validation_flag=True, batch_size=64)
-    test_gen = generate_training_data(image_paths_test, angles_test, validation_flag=True, batch_size=64)
+    train_gen = generate_training_data(image_paths_train, angles_train, validation_flag=False, batch_size=12)
+    val_gen = generate_training_data(image_paths_train, angles_train, validation_flag=True, batch_size=12)
+    test_gen = generate_training_data(image_paths_test, angles_test, validation_flag=True, batch_size=12)
 
-    checkpoint = ModelCheckpoint('model{epoch:02d}.h5')
+    checkpoint = ModelCheckpoint('nf_model{epoch:02d}.h5')
 
-    history = model.fit_generator(train_gen,epochs=8,steps_per_epoch=2000,verbose=2,callbacks=[checkpoint],
+
+
+
+    history = model.fit_generator(train_gen,epochs=1,steps_per_epoch=25,verbose=2,callbacks=[checkpoint],
                                   validation_data=val_gen,validation_steps=25)
 
     print(model.summary())
 
+
+
+    model.layers.pop()
+    model.layers.pop()
+    model.layers.pop()
+    model.layers.pop()
+    model.layers.pop()
+
+    nfInput = Input(shape=(512,))
+    #nf = Dense(500, activation='elu', kernel_regularizer=l2(0.001))(nfInput)
+    nf = Dropout(0.5)(nfInput)
+    nf = Dense(100, activation='elu', kernel_regularizer=l2(0.001))(nf)
+    nf = Dense(50, activation='elu', kernel_regularizer=l2(0.001))(nf)
+    nf = Dense(10, activation='elu', kernel_regularizer=l2(0.001))(nf)
+
+    # Add a fully connected output layer
+    nf_SteerAngle = Dense(1, activation='elu')(nf)
+
+    nf_model = Model(inputs=nfInput,output=nf_SteerAngle)
+    nf_model.compile(optimizer=Adam(lr=1e-4), loss='mse')
+
+    print(nf_model.summary())
+
+    nf_history = nf_model.fit(x=model_pred,y=angles_train,epochs=2,batch_size=64,)
+
+    nf_history = nf_model.fit_generator(train_gen,epochs=1,steps_per_epoch=2000,verbose=2,callbacks=[checkpoint],
+                                  validation_data=val_gen,validation_steps=25)
+
     # visualize some predictions
-    n = 12
+    n = 1000
     X_test, y_test = generate_training_data_for_visualization(image_paths_test[:n], angles_test[:n], batch_size=n,
                                                               validation_flag=True)
-    y_pred = model.predict(X_test, n, verbose=2)
-    #visualize_dataset(X_test, y_test, y_pred)
+    y_pred = nf_model.predict(X_test, n, verbose=2)
+    visualize_dataset(X_test, y_test, y_pred)
+
+    model = Model(inputs=model.inputs,outputs=model.layers[-1].output)
+    model.compile(optimizer=Adam(lr=1e-4), loss='mse')
+    model_pred = model.predict_generator(val_gen,1000)
+
+
+
+
+
+
 
     # Save model data
-    model.save_weights('./model_w.h5')
-    model.save('model_clone_combo.h5')
+    model.save_weights('./model_w_test.h5')
+    model.save('model_shitty.h5')
     json_string = model.to_json()
-    with open('./model.json', 'w') as f:
+    with open('./model_test.json', 'w') as f:
         f.write(json_string)
 
 
